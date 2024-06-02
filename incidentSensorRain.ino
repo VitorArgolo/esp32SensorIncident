@@ -7,23 +7,25 @@ const char* incidentsEndpoint = "https://api-incidents-1.onrender.com/incidents"
 const char* username = "admin";
 const char* password = "admin";
 
-const int rainSensorPinAO = 32;  
-const int rainSensorPinDO = 14;  
+const int rainSensorPinAO = 32;  // Pin where the analog output of the rain sensor is connected
+const int rainSensorPinDO = 14;  // Pin where the digital output of the rain sensor is connected
 
 String jwtToken;
 String lastState = "No occurrence";
 
 void setup() {
   Serial.begin(115200);
-  WiFi.begin("usuario", "senha"); //wifi dados
+  WiFi.begin("vitor", "123abcdef");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Connecting to WiFi...");
   }
   Serial.println("Connected to WiFi");
 
+  // Set pin mode for the rain sensor
   pinMode(rainSensorPinDO, INPUT);
 
+  // Get JWT token
   getJwtToken();
 }
 
@@ -31,6 +33,7 @@ void loop() {
   int sensorValueAO = analogRead(rainSensorPinAO);
   int sensorValueDO = digitalRead(rainSensorPinDO);
 
+  // Print sensor readings
   Serial.print("Analog value: ");
   Serial.print(sensorValueAO);
   Serial.print(" | Digital value: ");
@@ -45,7 +48,7 @@ void loop() {
     lastState = currentState;
   }
 
-  delay(5000);  
+  delay(5000);  // Adjust the delay as needed
 }
 
 String getWaterLevel(int sensorValueAO, int sensorValueDO) {
@@ -68,6 +71,7 @@ void getJwtToken() {
   http.begin(loginEndpoint);
   http.addHeader("Content-Type", "application/json");
 
+  // Build the JSON request body
   StaticJsonDocument<200> doc;
   doc["username"] = username;
   doc["password"] = password;
@@ -81,6 +85,7 @@ void getJwtToken() {
     Serial.println("Response:");
     Serial.println(response);
 
+    // Parse the JSON response to get the JWT token
     DynamicJsonDocument jsonDoc(200);
     deserializeJson(jsonDoc, response);
     jwtToken = jsonDoc["token"].as<String>();
@@ -99,8 +104,10 @@ void handleIncident(String waterLevel) {
   int incidentId = checkForIncidentWithId1();
 
   if (incidentId == 1) {
+    // Update existing incident
     updateIncident(waterLevel, incidentId);
   } else {
+    // Create new incident
     createIncident(waterLevel);
   }
 }
@@ -133,7 +140,7 @@ int checkForIncidentWithId1() {
   }
 
   http.end();
-  return -1;  
+  return -1;  // Indicate that no incident with id 1 was found
 }
 
 void createIncident(String waterLevel) {
@@ -143,14 +150,16 @@ void createIncident(String waterLevel) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization",  jwtToken);
 
+  // Build the JSON request body
   StaticJsonDocument<200> doc;
   doc["title"] = "Bloco 1 - Rain Sensor";
-  doc["description"] = "Rain level detected";
+  doc["description"] = "Vazamento detectado";
   doc["severity"] = getSeverity(waterLevel);
   doc["leak"] = (waterLevel != "No occurrence");
   String requestBody;
   serializeJson(doc, requestBody);
 
+  // Print JSON request body for debugging
   Serial.println("JSON request body:");
   Serial.println(requestBody);
 
@@ -176,6 +185,7 @@ void updateIncident(String waterLevel, int incidentId) {
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization",  jwtToken);
 
+  // Build the JSON request body
   StaticJsonDocument<200> doc;
   doc["title"] = "Bloco 1 - Rain Sensor";
   doc["description"] = "Rain level detected";
@@ -184,6 +194,7 @@ void updateIncident(String waterLevel, int incidentId) {
   String requestBody;
   serializeJson(doc, requestBody);
 
+  // Print JSON request body for debugging
   Serial.println("JSON update request body:");
   Serial.println(requestBody);
 
@@ -203,12 +214,12 @@ void updateIncident(String waterLevel, int incidentId) {
 
 String getSeverity(String waterLevel) {
   if (waterLevel == "High") {
-    return "Alto";
+    return "Alta";
   } else if (waterLevel == "Medium") {
-    return "Médio";
+    return "Média";
   } else if (waterLevel == "Low") {
-    return "Baixo";
+    return "Baixa";
   } else {
-    return "Nenhuma ocorrência";
+    return "Sem Ocorrência";
   }
 }
